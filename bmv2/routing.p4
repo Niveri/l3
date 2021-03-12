@@ -1,16 +1,20 @@
 
 
-#include "defines.p4"
+
 
 control Routing (inout headers hdr,
-                inout metadata meta){
+                inout metadata meta,
+                inout standard_metadata_t standard_metadata){
 
         action set_nhop(macAddr_t srcAddr, macAddr_t dstAddr,vlan_id vid){
-                hdr.ethernet.srcAddr = srcAddr;
-                hdr.ethernet.dstAddr = dstAddr;
+                hdr.ethernet.mac_srcAddr = srcAddr;
+                hdr.ethernet.mac_dstAddr = dstAddr;
                 hdr.vlan.vid = vid;
                 hdr.ipv4.ttl = hdr.ipv4.ttl -1;
 
+        }
+        action drop() {
+            mark_to_drop(standard_metadata);
         }
         table routing {
             key = {

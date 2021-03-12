@@ -1,8 +1,3 @@
-action drop() {
-    drop();
-}
-actio nop() {
-}
 #include <core.p4>
 #include <v1model.p4>
 
@@ -74,7 +69,6 @@ struct metadata {
     bit<16> dstPort;
 }
 
-typedef bit<9> egressSpec_t;
 typedef bit<48> macAddr_t;
 typedef bit<12> vlan_id;
 parser MyParser(packet_in packet, out headers hdr, inout metadata meta, inout standard_metadata_t standard_metadata) {
@@ -98,9 +92,9 @@ parser MyParser(packet_in packet, out headers hdr, inout metadata meta, inout st
     }
     state parse_ipv4 {
         packet.extract(hdr.ipv4);
-        transition select(hdr.ipv4.protocol, hdr.ipv4.ihl) {
-            0x506: parse_tcp;
-            0x511: parse_udp;
+        transition select(hdr.ipv4.protocol) {
+            6: parse_tcp;
+            17: parse_udp;
             default: accept;
         }
     }
@@ -118,7 +112,7 @@ parser MyParser(packet_in packet, out headers hdr, inout metadata meta, inout st
     }
 }
 
-control SwitchDeparser(packet_out packet, in headers hdr) {
+control MyDeparser(packet_out packet, in headers hdr) {
     apply {
         packet.emit(hdr.ethernet);
         packet.emit(hdr.vlan);
@@ -128,62 +122,7 @@ control SwitchDeparser(packet_out packet, in headers hdr) {
     }
 }
 
-header ethernet_h {
-    bit<48> mac_dstAddr;
-    bit<48> mac_srcAddr;
-    bit<16> etherType;
-}
-
-header vlan_h {
-    bit<3>  pcp;
-    bit<1>  cfi;
-    bit<12> vid;
-    bit<16> etherType;
-}
-
-header ipv4_h {
-    bit<4>  version;
-    bit<4>  ihl;
-    bit<8>  diffserv;
-    bit<16> totalLen;
-    bit<16> id;
-    bit<3>  flags;
-    bit<13> offset;
-    bit<8>  ttl;
-    bit<8>  protocol;
-    bit<16> checksum;
-    bit<32> srcAddr;
-    bit<32> dstAddr;
-}
-
-header tcp_h {
-    bit<16> srcPort;
-    bit<16> dstPort;
-    bit<32> seqNum;
-    bit<32> actNum;
-    bit<4>  dataOffset;
-    bit<4>  res;
-    bit<8>  flags;
-    bit<16> window;
-    bit<16> checksum;
-    bit<16> urgPtr;
-}
-
-header udp_h {
-    bit<16> srcPort;
-    bit<16> dstPort;
-    bit<16> length;
-    bit<16> checksum;
-}
-
-struct headers {
-    ethernet_h ethernet;
-    vlan_h     vlan;
-    ipv4_h     ipv4;
-    tcp_h      tcp;
-    udp_h      udp;
-}
-
+typedef bit<9> egressSpec_t;
 control Switching(inout headers hdr, inout metadata meta, inout standard_metadata_t standard_metadata) {
     action forward(egressSpec_t port) {
         standard_metadata.egress_spec = port;
@@ -193,8 +132,8 @@ control Switching(inout headers hdr, inout metadata meta, inout standard_metadat
     }
     table switching {
         key = {
-            hdr.ethernet.dstAddr: exact;
-            vlan.vid            : exact;
+            hdr.ethernet.mac_dstAddr: exact;
+            hdr.vlan.vid            : exact;
         }
         actions = {
             forward;
@@ -213,13 +152,15 @@ struct MacLearnDigest {
     bit<12> vlan_id;
 }
 
-control mac_learning(inout headers hdr, inout metadata meta, inout standard_metadata_t standard_metadata) {
+control Mac_learning(inout headers hdr, inout metadata meta, inout standard_metadata_t standard_metadata) {
+    action nop() {
+    }
     action mac_learn() {
-        digest<MacLearnDigest>((bit<32>)1024, { hdr.ethernet.srcAddr, standard_metadata.ingress_port });
+        digest<MacLearnDigest>((bit<32>)1024, { hdr.ethernet.mac_srcAddr, standard_metadata.ingress_port, hdr.vlan.vid });
     }
     table mac_learning {
         key = {
-            hdr.ethernet.srcAddr: exact;
+            hdr.ethernet.mac_srcAddr: exact;
         }
         actions = {
             mac_learn;
@@ -232,66 +173,10 @@ control mac_learning(inout headers hdr, inout metadata meta, inout standard_meta
     }
 }
 
-header ethernet_h {
-    bit<48> mac_dstAddr;
-    bit<48> mac_srcAddr;
-    bit<16> etherType;
-}
-
-header vlan_h {
-    bit<3>  pcp;
-    bit<1>  cfi;
-    bit<12> vid;
-    bit<16> etherType;
-}
-
-header ipv4_h {
-    bit<4>  version;
-    bit<4>  ihl;
-    bit<8>  diffserv;
-    bit<16> totalLen;
-    bit<16> id;
-    bit<3>  flags;
-    bit<13> offset;
-    bit<8>  ttl;
-    bit<8>  protocol;
-    bit<16> checksum;
-    bit<32> srcAddr;
-    bit<32> dstAddr;
-}
-
-header tcp_h {
-    bit<16> srcPort;
-    bit<16> dstPort;
-    bit<32> seqNum;
-    bit<32> actNum;
-    bit<4>  dataOffset;
-    bit<4>  res;
-    bit<8>  flags;
-    bit<16> window;
-    bit<16> checksum;
-    bit<16> urgPtr;
-}
-
-header udp_h {
-    bit<16> srcPort;
-    bit<16> dstPort;
-    bit<16> length;
-    bit<16> checksum;
-}
-
-struct headers {
-    ethernet_h ethernet;
-    vlan_h     vlan;
-    ipv4_h     ipv4;
-    tcp_h      tcp;
-    udp_h      udp;
-}
-
 control Acl(inout headers hdr, inout metadata meta, inout standard_metadata_t standard_metadata) {
-    action nop_acl() {
+    action nop() {
     }
-    action drop() {
+    action drop_acl() {
         mark_to_drop(standard_metadata);
     }
     table acl {
@@ -303,8 +188,8 @@ control Acl(inout headers hdr, inout metadata meta, inout standard_metadata_t st
             meta.dstPort     : ternary;
         }
         actions = {
-            nop_acl;
-            drop;
+            nop;
+            drop_acl;
         }
         size = 1000;
     }
@@ -313,15 +198,15 @@ control Acl(inout headers hdr, inout metadata meta, inout standard_metadata_t st
     }
 }
 
-typedef bit<9> egressSpec_t;
-typedef bit<48> macAddr_t;
-typedef bit<12> vlan_id;
-control Routing(inout headers hdr, inout metadata meta) {
+control Routing(inout headers hdr, inout metadata meta, inout standard_metadata_t standard_metadata) {
     action set_nhop(macAddr_t srcAddr, macAddr_t dstAddr, vlan_id vid) {
-        hdr.ethernet.srcAddr = srcAddr;
-        hdr.ethernet.dstAddr = dstAddr;
+        hdr.ethernet.mac_srcAddr = srcAddr;
+        hdr.ethernet.mac_dstAddr = dstAddr;
         hdr.vlan.vid = vid;
         hdr.ipv4.ttl = hdr.ipv4.ttl - 1;
+    }
+    action drop() {
+        mark_to_drop(standard_metadata);
     }
     table routing {
         key = {
@@ -338,14 +223,16 @@ control Routing(inout headers hdr, inout metadata meta) {
     }
 }
 
-control Routable(inout headers hdr, inout metadata meta) {
+control Routable(inout headers hdr, inout metadata meta, inout standard_metadata_t standard_metadata) {
     action route() {
+    }
+    action nop() {
     }
     table routable {
         key = {
-            hdr.ethernet.srcAddr: exact;
-            hdr.ethernet.dstAddr: exact;
-            hdr.vlan.vid        : exact;
+            hdr.ethernet.mac_srcAddr: exact;
+            hdr.ethernet.mac_dstAddr: exact;
+            hdr.vlan.vid            : exact;
         }
         actions = {
             route;
@@ -362,6 +249,8 @@ control VlanEgressProc(inout headers hdr, inout metadata meta, inout standard_me
     action strip_vlan() {
         hdr.ethernet.etherType = hdr.vlan.etherType;
         hdr.vlan.setInvalid();
+    }
+    action nop() {
     }
     table VlanEgressProc_t {
         key = {
@@ -381,14 +270,15 @@ control VlanEgressProc(inout headers hdr, inout metadata meta, inout standard_me
 control VlanIngressProc(inout headers hdr, inout metadata meta, inout standard_metadata_t standard_metadata) {
     action add_vlan() {
         hdr.vlan.setValid();
-        hdr.vlan.etherType = hdr.ethernet.ethernet_h;
+        hdr.vlan.etherType = hdr.ethernet.etherType;
         hdr.ethernet.etherType = 0x8100;
+    }
+    action nop() {
     }
     table VlanIngressProc_t {
         key = {
-            standard_metadata.inggress_port: exact;
-            hdr.vlan                       : valid;
-            hdr.vlan.vid                   : exact;
+            standard_metadata.ingress_port: exact;
+            hdr.vlan.vid                  : exact;
         }
         actions = {
             add_vlan;
@@ -397,23 +287,24 @@ control VlanIngressProc(inout headers hdr, inout metadata meta, inout standard_m
         size = 64;
     }
     apply {
-        routing.apply();
+        VlanIngressProc_t.apply();
     }
 }
 
 control MyIngress(inout headers hdr, inout metadata meta, inout standard_metadata_t standard_metadata) {
     VlanIngressProc() vlanIngressProc;
-    mac_learning() mac_learning;
+    Mac_learning() mac_learn;
     Routable() routable;
     Switching() switching;
     Acl() acl;
     Routing() routing;
     apply {
-        vlanIngressProc.apply(hdr, meta, standard_metadat);
-        mac_learning.apply(hdr, meta, standard_metadat);
-        routable.apply(hdr, meta, standard_metadat);
-        routing.apply(hdr, meta, standard_metadat);
-        switching.apply(hdr, meta, standard_metadat);
+        vlanIngressProc.apply(hdr, meta, standard_metadata);
+        mac_learn.apply(hdr, meta, standard_metadata);
+        routable.apply(hdr, meta, standard_metadata);
+        routing.apply(hdr, meta, standard_metadata);
+        switching.apply(hdr, meta, standard_metadata);
+        acl.apply(hdr, meta, standard_metadata);
     }
 }
 
@@ -424,13 +315,13 @@ control MyEgress(inout headers hdr, inout metadata meta, inout standard_metadata
 
 control MyComputeChecksum(inout headers hdr, inout metadata meta) {
     apply {
-        update_checksum(hdr.ipv4.isValid(), { hdr.ipv4.version, hdr.ipv4.ihl, hdr.ipv4.diffserv, hdr.ipv4.total_len, hdr.ipv4.id, hdr.ipv4.flags, hdr.ipv4.fragsOffset, hdr.ipv4.ttl, hdr.ipv4.protocol, hdr.ipv4.srcAddr, hdr.ipv4.dstAddr }, hdr.ipv4.hdr_checksum, HashAlgorithm.csum16);
+        update_checksum(hdr.ipv4.isValid(), { hdr.ipv4.version, hdr.ipv4.ihl, hdr.ipv4.diffserv, hdr.ipv4.totalLen, hdr.ipv4.id, hdr.ipv4.flags, hdr.ipv4.offset, hdr.ipv4.ttl, hdr.ipv4.protocol, hdr.ipv4.srcAddr, hdr.ipv4.dstAddr }, hdr.ipv4.checksum, HashAlgorithm.csum16);
     }
 }
 
 control MyVerifyChecksum(inout headers hdr, inout metadata meta) {
     apply {
-        verify_checksum(hdr.ipv4.isValid(), { hdr.ipv4.version, hdr.ipv4.ihl, hdr.ipv4.diffserv, hdr.ipv4.total_len, hdr.ipv4.id, hdr.ipv4.flags, hdr.ipv4.fragsOffset, hdr.ipv4.ttl, hdr.ipv4.protocol, hdr.ipv4.srcAddr, hdr.ipv4.dstAddr }, hdr.ipv4.hdr_checksum, HashAlgorithm.csum16);
+        verify_checksum(hdr.ipv4.isValid(), { hdr.ipv4.version, hdr.ipv4.ihl, hdr.ipv4.diffserv, hdr.ipv4.totalLen, hdr.ipv4.id, hdr.ipv4.flags, hdr.ipv4.offset, hdr.ipv4.ttl, hdr.ipv4.protocol, hdr.ipv4.srcAddr, hdr.ipv4.dstAddr }, hdr.ipv4.checksum, HashAlgorithm.csum16);
     }
 }
 

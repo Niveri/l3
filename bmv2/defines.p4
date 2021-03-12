@@ -5,6 +5,6 @@
 #define IP_IPHL_UDP 0x511
 
 #define MAC_LEARN_RECEIVER 1024
-typedef bit<9>  egressSpec_t;
+
 typedef bit<48> macAddr_t;
 typedef bit<12> vlan_id;

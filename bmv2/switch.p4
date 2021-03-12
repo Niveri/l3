@@ -20,17 +20,18 @@ control MyIngress(inout headers hdr,
                 inout standard_metadata_t standard_metadata) {
    
     VlanIngressProc() vlanIngressProc;
-    mac_learning() mac_learning;
+    Mac_learning() mac_learn;
     Routable() routable;
     Switching() switching;
     Acl() acl;
     Routing() routing;
     apply {
-        vlanIngressProc.apply(hdr, meta, standard_metadat);
-        mac_learning.apply(hdr, meta, standard_metadat);
-        routable.apply(hdr, meta, standard_metadat);
-        routing.apply(hdr, meta, standard_metadat);
-        switching.apply(hdr, meta, standard_metadat);
+        vlanIngressProc.apply(hdr, meta, standard_metadata);
+        mac_learn.apply(hdr, meta, standard_metadata);
+        routable.apply(hdr, meta, standard_metadata);
+        routing.apply(hdr, meta, standard_metadata);
+        switching.apply(hdr, meta, standard_metadata);
+        acl.apply(hdr, meta, standard_metadata);
     }
 }
 control MyEgress(inout headers hdr,
@@ -49,16 +50,16 @@ control MyComputeChecksum(inout headers hdr,
                 hdr.ipv4.version,
                 hdr.ipv4.ihl,
                 hdr.ipv4.diffserv,
-                hdr.ipv4.total_len,
+                hdr.ipv4.totalLen,
                 hdr.ipv4.id,
                 hdr.ipv4.flags,
-                hdr.ipv4.fragsOffset,
+                hdr.ipv4.offset,
                 hdr.ipv4.ttl,
                 hdr.ipv4.protocol,
                 hdr.ipv4.srcAddr,
                 hdr.ipv4.dstAddr
             },
-            hdr.ipv4.hdr_checksum,
+            hdr.ipv4.checksum,
             HashAlgorithm.csum16
         );
     }
@@ -72,16 +73,16 @@ control MyVerifyChecksum(inout headers hdr,
                 hdr.ipv4.version,
                 hdr.ipv4.ihl,
                 hdr.ipv4.diffserv,
-                hdr.ipv4.total_len,
+                hdr.ipv4.totalLen,
                 hdr.ipv4.id,
                 hdr.ipv4.flags,
-                hdr.ipv4.fragsOffset,
+                hdr.ipv4.offset,
                 hdr.ipv4.ttl,
                 hdr.ipv4.protocol,
                 hdr.ipv4.srcAddr,
                 hdr.ipv4.dstAddr
             },
-            hdr.ipv4.hdr_checksum,
+            hdr.ipv4.checksum,
             HashAlgorithm.csum16
         );
     }

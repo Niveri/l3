@@ -2,15 +2,17 @@
 #include <core.p4>
 #include <v1model.p4>
 
-#include "headers.p4"
+
 
 control Acl (inout headers hdr,
             inout metadata meta,
             inout standard_metadata_t standard_metadata){
-            action nop_acl(){
 
+            action nop() {
+    
             }
-            action drop(){
+           
+            action drop_acl(){
                 mark_to_drop(standard_metadata);
             }
                 table acl {
@@ -22,8 +24,8 @@ control Acl (inout headers hdr,
                         meta.dstPort: ternary;
                     }
                 actions = {
-                    nop_acl;
-                    drop;
+                    nop;
+                    drop_acl;
                 }
                 size = 1000;
                 }

@@ -5,14 +5,17 @@ control VlanIngressProc(inout headers hdr,
 
         action add_vlan(){
             hdr.vlan.setValid();
-            hdr.vlan.etherType = hdr.ethernet.ethernet_h;
+            hdr.vlan.etherType = hdr.ethernet.etherType;
             hdr.ethernet.etherType = TYPE_VLAN;
+    
+        }
+        action nop() {
     
         }
         table VlanIngressProc_t {
             key = {
-                standard_metadata.inggress_port : exact;
-                hdr.vlan                        : valid;
+                standard_metadata.ingress_port : exact;
+                //hdr.vlan                        : valid;
                 hdr.vlan.vid                    : exact;
             }
             actions = {
@@ -22,7 +25,7 @@ control VlanIngressProc(inout headers hdr,
             size = 64;
         }
         apply {
-            routing.apply();
+            VlanIngressProc_t.apply();
         }
 
 

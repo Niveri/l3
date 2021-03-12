@@ -1,8 +1,7 @@
 #include <core.p4>
 #include <v1model.p4>
 
-#include "headers.p4"
-
+typedef bit<9>  egressSpec_t;
 
 
 control Switching (inout headers hdr,
@@ -17,8 +16,8 @@ control Switching (inout headers hdr,
             }
             table switching {
                 key  = {
-                    hdr.ethernet.dstAddr : exact;
-                    vlan.vid             : exact;
+                    hdr.ethernet.mac_dstAddr : exact;
+                    hdr.vlan.vid             : exact;
                 }
                 actions = {
                     forward;

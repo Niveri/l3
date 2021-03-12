@@ -1,14 +1,18 @@
 control Routable (inout headers hdr,
-                inout metadata meta){
+                inout metadata meta,
+                inout standard_metadata_t standard_metadata){
         action route() {
-
+            ///routing?
+        }
+        action nop() {
+    
         }
 
         
         table routable {
             key = {
-                hdr.ethernet.srcAddr: exact;   //delete?
-                hdr.ethernet.dstAddr: exact;   //lpm
+                hdr.ethernet.mac_srcAddr: exact;   //delete?
+                hdr.ethernet.mac_dstAddr: exact;   //lpm
                 hdr.vlan.vid        : exact;
             }
             actions = {

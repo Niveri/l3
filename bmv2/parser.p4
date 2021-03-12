@@ -1,8 +1,8 @@
 
-#include "defines.p4"
+
 #include <core.p4>
 #include <v1model.p4>
-
+#include "defines.p4"
 
 parser MyParser(packet_in packet,
                 out headers hdr,
@@ -30,9 +30,9 @@ parser MyParser(packet_in packet,
     }
     state parse_ipv4 {
         packet.extract(hdr.ipv4);
-        transition select(hdr.ipv4.protocol, hdr.ipv4.ihl){
-            IP_IPHL_TCP : parse_tcp;
-            IP_IPHL_UDP : parse_udp;
+        transition select(hdr.ipv4.protocol){
+            6 : parse_tcp;
+            17 : parse_udp;
             default: accept;
 
         }
@@ -51,7 +51,7 @@ parser MyParser(packet_in packet,
 
     }
 }
-control SwitchDeparser(packet_out packet,
+control MyDeparser(packet_out packet,
                         in headers hdr){
         apply {
             packet.emit(hdr.ethernet);

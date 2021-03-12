@@ -8,6 +8,9 @@ control VlanEgressProc(inout headers hdr,
             hdr.vlan.setInvalid();
     
         }
+        action nop() {
+    
+        }
         table VlanEgressProc_t {
             key = {
                 standard_metadata.egress_spec : exact;
